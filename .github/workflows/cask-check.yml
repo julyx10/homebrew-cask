@@ -15,29 +15,41 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: cask-test
 
-      - name: Show Homebrew
-        run: brew --version
+      - name: Verify cask file
+        run: |
+          pwd
+          git branch --show-current
+          test -f Casks/l/lap.rb
+          ls -la Casks/l
+
+      - name: Update Homebrew
+        run: brew update --force
+
+      - name: Create local tap
+        run: |
+          brew tap-new lap/test
+          TAP_PATH="$(brew --repository lap/test)"
+          mkdir -p "$TAP_PATH/Casks/l"
+          cp Casks/l/lap.rb "$TAP_PATH/Casks/l/lap.rb"
+          ls -la "$TAP_PATH/Casks/l"
 
       - name: Style
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: "1"
         run: |
-          brew style --fix Casks/l/lap.rb
-          git diff -- Casks/l/lap.rb
+          brew style --fix "$(brew --repository lap/test)/Casks/l/lap.rb"
           git diff --exit-code -- Casks/l/lap.rb
 
       - name: Audit new cask
         env:
-          HOMEBREW_NO_AUTO_UPDATE: "1"
           HOMEBREW_GITHUB_API_TOKEN: ${{ github.token }}
-        run: brew audit --cask --new Casks/l/lap.rb
+        run: brew audit --cask --new lap/test/lap
 
       - name: Install
         env:
-          HOMEBREW_NO_AUTO_UPDATE: "1"
           HOMEBREW_NO_INSTALL_FROM_API: "1"
-        run: brew install --cask Casks/l/lap.rb
+        run: brew install --cask lap/test/lap
 
       - name: Uninstall
-        run: brew uninstall --cask lap
+        run: brew uninstall --cask lap/test/lap
