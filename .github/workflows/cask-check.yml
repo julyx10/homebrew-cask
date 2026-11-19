@@ -12,9 +12,11 @@ permissions:
 jobs:
   check:
     runs-on: macos-15
+    timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout test branch
+        uses: actions/checkout@v4
         with:
           ref: cask-test
 
@@ -28,6 +30,14 @@ jobs:
       - name: Update Homebrew
         run: brew update --force
 
+      - name: Check cask style
+        run: |
+          brew style --fix Casks/l/lap.rb
+          if ! git diff --exit-code -- Casks/l/lap.rb; then
+            echo "::error::brew style changed Casks/l/lap.rb; review and commit the formatting changes"
+            exit 1
+          fi
+
       - name: Create local tap
         run: |
           brew tap-new lap/test
@@ -36,20 +46,18 @@ jobs:
           cp Casks/l/lap.rb "$TAP_PATH/Casks/l/lap.rb"
           ls -la "$TAP_PATH/Casks/l"
 
-      - name: Style
-        run: |
-          brew style --fix "$(brew --repository lap/test)/Casks/l/lap.rb"
-          git diff --exit-code -- Casks/l/lap.rb
+      - name: Trust local tap cask
+        run: brew trust --cask lap/test/lap
 
       - name: Audit new cask
         env:
           HOMEBREW_GITHUB_API_TOKEN: ${{ github.token }}
         run: brew audit --cask --new lap/test/lap
 
-      - name: Install
+      - name: Install cask
         env:
           HOMEBREW_NO_INSTALL_FROM_API: "1"
         run: brew install --cask lap/test/lap
 
-      - name: Uninstall
+      - name: Uninstall cask
         run: brew uninstall --cask lap/test/lap
